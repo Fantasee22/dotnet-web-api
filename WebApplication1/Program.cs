@@ -1,4 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using WebApplication1.Data;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<WebApplication1Context>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("WebApplicationDb") ?? throw new InvalidOperationException("Connection string 'WebApplicationDb' not found.")));
 
 // Add services to the container.
 

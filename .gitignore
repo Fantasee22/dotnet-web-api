@@ -22,6 +22,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+WebApplication1/[Oo]bj/
 
 # .NET Core
 project.lock.json
