@@ -17,5 +17,6 @@ namespace WebApplication1.Data
         public DbSet<Employee>? Employee { get; set; }
         public DbSet<EmployeePosition>? EmployeePosition { get; set; }
         public DbSet<OfficeBranch>? OfficeBranch { get; set; }
+        public DbSet<UploadFile>? UploadFile { get; set; }
     }
 }

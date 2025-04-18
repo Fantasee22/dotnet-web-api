@@ -8,7 +8,7 @@ namespace WebApplication1.Model
     {
         public UploadFile()
         {
-
+            this.Employees = new HashSet<Employee>();
         }
 
         [Key]
@@ -23,8 +23,8 @@ namespace WebApplication1.Model
         [StringLength(50)]
         public string Status { get; set; } = String.Empty;
 
-        [Column("BASE64_DATA")]
-        [StringLength(3000)]
+        [Column("BASE64_DATA", TypeName = "nvarchar(max)")]
+        [MaxLength]
         public string Base64Data { get; set; } = String.Empty;
 
         [InverseProperty("UploadFile")]

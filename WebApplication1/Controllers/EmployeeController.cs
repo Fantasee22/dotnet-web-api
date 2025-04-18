@@ -9,6 +9,7 @@ using WebApplication1.Data;
 using WebApplication1.Model;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
+using System.Globalization;
 
 namespace WebApplication1.Controllers
 {
@@ -84,6 +85,15 @@ namespace WebApplication1.Controllers
         [AllowAnonymous]
         public async Task<ActionResult> UploadFileExcel(ReqFile req)
         {
+            await this.context.UploadFile.AddAsync(new UploadFile()
+            {
+                Name = req.Name,
+                Status = "NEW",
+                Base64Data = req.Base64Content
+            });
+
+            await this.context.SaveChangesAsync();
+
             try
             {
                 List<string[]> rows = new List<string[]>();
@@ -94,7 +104,7 @@ namespace WebApplication1.Controllers
 
                 using (var package = new ExcelPackage(stream))
                 {
-                    var worksheet = package.Workbook.Worksheets[0];
+                    ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
                     int rowCount = worksheet.Dimension.Rows;
                     int colCount = worksheet.Dimension.Columns;
 
@@ -106,28 +116,152 @@ namespace WebApplication1.Controllers
                         {
                             rowData[col - 1] = worksheet.Cells[row, col].Text;
                         }
-
-                        rows.Add(rowData);
+                        if (!string.IsNullOrWhiteSpace(rowData[1].ToString()))
+                            rows.Add(rowData);
                     }
 
-                    //using (StreamReader sr = new(stream))
-                    //{
-                    //    string line;
-                    //    while ((line = sr.ReadLine()) != null)
-                    //    {
-                    //        string[] data = line.Split(',');
-                    //        rows.Add(data);
-                    //    }
-                    //}
+                    UploadFile? uploadFile = await (from a in context.UploadFile
+                                                    where a.Name == req.Name && a.Status == "NEW"
+                                                    select a).FirstOrDefaultAsync();
 
+                    if (uploadFile is not null)
+                    {
+                        await this.handleOfficeBranch(rows);
+                        await this.handleEmployeePosition(rows);
+                        await this.handleEmployee(rows, uploadFile.Id);
+
+                        uploadFile.Status = "DONE";
+                        await context.SaveChangesAsync();
+                    }
                 }
             }
             catch (Exception e)
             {
+                UploadFile? uploadFile = await (from a in context.UploadFile
+                                                where a.Name == req.Name && a.Status == "NEW"
+                                                select a).FirstOrDefaultAsync();
+                if (uploadFile is not null)
+                {
+                    uploadFile.Status = "ERROR";
+                }
+
                 return BadRequest(e.Message);
             }
 
-            return Ok();
+            return Ok(new ResMsg() { Msg = "Success" });
         }
+
+        private async Task handleEmployee(List<string[]> rows, long uploadFileId)
+        {
+            List<string> addedCode = new List<string>();
+
+            for (int i = 1; i < rows.Count; i++)
+            {
+                if (addedCode.Contains(rows[i][1].ToString().Trim())) continue;
+                Employee? employee = await (from a in context.Employee
+                                           where a.Code == rows[i][1].ToString().Trim()
+                                           select a).FirstOrDefaultAsync();
+
+                OfficeBranch? officeBranch = await (from a in context.OfficeBranch
+                                                    where a.Code == rows[i][10].ToString().Trim()
+                                                    select a).FirstOrDefaultAsync();
+
+                EmployeePosition? employeePosition = await (from a in context.EmployeePosition
+                                                            where a.Code == rows[i][8].ToString().Trim()
+                                                            select a).FirstOrDefaultAsync();
+
+                if (employee is null)
+                {
+                    Employee addEmployee = new Employee()
+                    {
+                        Name = rows[i][0].ToString(),
+                        Code = rows[i][1].ToString(),
+                        IsContract = rows[i][2].ToString().ToLower() == "1" || rows[i][2].ToString().ToLower() == "true",
+                        StartDt = DateTime.TryParseExact(rows[i][3].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tempDate) ? tempDate : null,
+                        EndDt = DateTime.TryParseExact(rows[i][4].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tempDate2) ? tempDate2 : null,
+                        Address = rows[i][5].ToString().Trim(),
+                        Phone = rows[i][6].ToString().Trim(),
+                        OfficeBranchId = officeBranch?.Id,
+                        EmployeePositionId = employeePosition?.Id,
+                        UploadFileId = uploadFileId
+                    };
+                    await this.context.Employee.AddAsync(addEmployee);
+                    addedCode.Add(rows[i][1].ToString().Trim());
+                }
+                else
+                {
+                    employee.Name = rows[i][0].ToString();
+                    employee.IsContract = rows[i][2].ToString().ToLower() == "1" || rows[i][2].ToString().ToLower() == "true";
+                    employee.StartDt = DateTime.TryParseExact(rows[i][3].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tempDate) ? tempDate : null;
+                    employee.EndDt = DateTime.TryParseExact(rows[i][4].ToString(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var tempDate2) ? tempDate2 : null;
+                    employee.Address = rows[i][5].ToString().Trim();
+                    employee.Phone = rows[i][6].ToString().Trim();
+                    employee.OfficeBranchId = officeBranch?.Id;
+                    employee.EmployeePositionId = employeePosition?.Id;
+                    employee.UploadFileId = uploadFileId;
+                }
+            }
+            await this.context.SaveChangesAsync();
+        }
+
+        private async Task handleOfficeBranch(List<string[]> rows)
+        {
+            List<string> addedCode = new List<string>();
+
+            for (int i = 1; i < rows.Count; i++)
+            {
+                if (addedCode.Contains(rows[i][10].ToString().Trim())) continue;
+
+                OfficeBranch? officeBranch = await (from a in context.OfficeBranch
+                                                   where a.Code == rows[i][10].ToString().Trim()
+                                                   select a).FirstOrDefaultAsync();
+                if (officeBranch is null)
+                {
+                    await this.context.OfficeBranch.AddAsync(new OfficeBranch()
+                    {
+                        Name = rows[i][9].ToString().Trim(),
+                        Code = rows[i][10].ToString().Trim(),
+                        Address = rows[i][11].ToString().Trim()
+                    });
+                    addedCode.Add(rows[i][10].ToString().Trim());
+                } 
+                else
+                {
+                    officeBranch.Name = rows[i][9].ToString().Trim();
+                    officeBranch.Address = rows[i][11].ToString().Trim();
+                }
+            }
+            await this.context.SaveChangesAsync();
+        }
+
+        private async Task handleEmployeePosition(List<string[]> rows)
+        {
+            List<string> addedCode = new List<string>();
+
+            for (int i = 1; i < rows.Count; i++)
+            {
+                if (addedCode.Contains(rows[i][8].ToString().Trim())) continue;
+
+                EmployeePosition? employeePosition = await (from a in context.EmployeePosition
+                                                           where a.Code == rows[i][8].ToString().Trim()
+                                                           select a).FirstOrDefaultAsync();
+
+                if (employeePosition is null)
+                {
+                    await this.context.EmployeePosition.AddAsync(new EmployeePosition()
+                    {
+                        Name = rows[i][7].ToString().Trim(),
+                        Code = rows[i][8].ToString().Trim(),
+                    });
+                    addedCode.Add(rows[i][8].ToString().Trim());
+                }
+                else
+                {
+                    employeePosition.Name = rows[i][7].ToString().Trim();
+                }
+            }
+            await this.context.SaveChangesAsync();
+        }
+
     }
 }

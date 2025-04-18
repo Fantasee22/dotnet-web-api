@@ -1,14 +1,16 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebApplication1.Model
 {
     [Table("OFFICE_BRANCH")]
+    [Index(nameof(Code), IsUnique = true)]
     public class OfficeBranch
     {
         public OfficeBranch()
         {
-
+            this.Employees = new HashSet<Employee>();
         }
 
         [Key]

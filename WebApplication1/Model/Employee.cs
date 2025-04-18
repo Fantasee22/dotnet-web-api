@@ -1,9 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WebApplication1.Model
 {
     [Table("EMPLOYEE")]
+    [Index(nameof(Code), IsUnique = true)]
     public class Employee
     {
         public Employee()
@@ -45,20 +47,20 @@ namespace WebApplication1.Model
 
         [ForeignKey("EmployeePositionId")]
         [InverseProperty("Employees")]
-        public virtual EmployeePosition EmployeePosition { get; set; } = new EmployeePosition();
+        public virtual EmployeePosition EmployeePosition { get; set; }
 
         [Column("OFFICE_BRANCH_ID")]
         public long? OfficeBranchId { get; set; } = null;
 
         [ForeignKey("OfficeBranchId")]
         [InverseProperty("Employees")]
-        public virtual OfficeBranch OfficeBranch { get; set; } = new OfficeBranch();
+        public virtual OfficeBranch OfficeBranch { get; set; }
 
         [Column("UPLOAD_FILE_ID")]
         public long? UploadFileId { get; set; } = null;
 
         [ForeignKey("UploadFileId")]
         [InverseProperty("Employees")]
-        public virtual UploadFile UploadFile { get; set; } = new UploadFile();
+        public virtual UploadFile? UploadFile { get; set; }
     }
 }
