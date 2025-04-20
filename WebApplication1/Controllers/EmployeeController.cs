@@ -81,6 +81,118 @@ namespace WebApplication1.Controllers
         }
 
         [HttpPost]
+        [Route("GetAllEmployeePosition")]
+        [AllowAnonymous]
+        public async Task<ActionResult<List<EmployeePosition>>> GetAllEmployeePosition()
+        {
+            List<EmployeePosition> listEmpPos = await this.context.EmployeePosition.ToListAsync();
+            ResListEmployeePosition resListEmpPos = new ResListEmployeePosition();
+            foreach (EmployeePosition empPos in listEmpPos)
+            {
+                resListEmpPos.listEmployeePosition.Add(new ResEmployeePosition()
+                {
+                    Id = empPos.Id,
+                    Name = empPos.Name,
+                    Code = empPos.Code
+                });
+            }
+            return Ok(resListEmpPos);
+        }
+
+        [HttpPost]
+        [Route("GetEmployeePositionById")]
+        [AllowAnonymous]
+        public async Task<ActionResult<Employee>> GetEmployeePositionById([FromBody] ReqById req)
+        {
+            EmployeePosition empPos = await this.context.EmployeePosition.Where(x => x.Id == req.Id).FirstOrDefaultAsync();
+            ResEmployeePosition resEmpPos = new ResEmployeePosition();
+            if (empPos is not null)
+            {
+                resEmpPos = new ResEmployeePosition()
+                {
+                    Id = empPos.Id,
+                    Name = empPos.Name,
+                    Code = empPos.Code
+                };
+            }
+
+            return Ok(resEmpPos);
+        }
+
+        [HttpPost]
+        [Route("GetAllOfficeBranch")]
+        [AllowAnonymous]
+        public async Task<ActionResult<List<OfficeBranch>>> GetAllOfficeBranch()
+        {
+            List<OfficeBranch> listOfcBrc = await this.context.OfficeBranch.ToListAsync();
+            ResListOfficeBranch resListOfcBrc = new ResListOfficeBranch();
+            foreach (OfficeBranch ofcBrc in listOfcBrc)
+            {
+                resListOfcBrc.listOfficeBranch.Add(new ResOfficeBranch()
+                {
+                    Id = ofcBrc.Id,
+                    Name = ofcBrc.Name,
+                    Code = ofcBrc.Code,
+                    Address = ofcBrc.Address
+                });
+            }
+            return Ok(resListOfcBrc);
+        }
+
+        [HttpPost]
+        [Route("GetOfficeBranchById")]
+        [AllowAnonymous]
+        public async Task<ActionResult<Employee>> GetOfficeBranchById([FromBody] ReqById req)
+        {
+            OfficeBranch ofcBrc = await this.context.OfficeBranch.Where(x => x.Id == req.Id).FirstOrDefaultAsync();
+            ResOfficeBranch resOfcBrc = new ResOfficeBranch();
+            if (ofcBrc is not null)
+            {
+                resOfcBrc = new ResOfficeBranch()
+                {
+                    Id = ofcBrc.Id,
+                    Name = ofcBrc.Name,
+                    Code = ofcBrc.Code,
+                    Address = ofcBrc.Address
+                };
+            }
+
+            return Ok(resOfcBrc);
+        }
+
+        [HttpPost]
+        [Route("GetAllUploadFile")]
+        [AllowAnonymous]
+        public async Task<ActionResult<List<OfficeBranch>>> GetAllUploadFile()
+        {
+            List<UploadFile> listUplFile = await this.context.UploadFile.ToListAsync();
+            ResListUploadFile resListUplFile = new ResListUploadFile();
+            foreach (UploadFile uplFile in listUplFile)
+            {
+                resListUplFile.listUploadFile.Add(new ResUploadFile()
+                {
+                    Id = uplFile.Id,
+                    Name = uplFile.Name,
+                    Status = uplFile.Status,
+                    Base64Data = uplFile.Base64Data
+                });
+            }
+            return Ok(resListUplFile);
+        }
+
+        [HttpPost]
+        [Route("ExecSpGenericFilter")]
+        [AllowAnonymous]
+        public async Task<ActionResult<List<EmployeeDetail>>> ExecSpGenericFilter(ReqSpWithFilter req)
+        {
+            var employeDetail = await this.context.Set<EmployeeDetail>()
+                .FromSqlRaw("EXEC " + req.SpName + " @Filter = '" + req.Filter + "'") //sp_GetEmployeeDetailWithFilter
+                .ToListAsync();
+
+            return Ok(employeDetail);
+        }
+
+        [HttpPost]
         [Route("UploadFileExcel")]
         [AllowAnonymous]
         public async Task<ActionResult> UploadFileExcel(ReqFile req)
@@ -124,13 +236,23 @@ namespace WebApplication1.Controllers
                                                     where a.Name == req.Name && a.Status == "NEW"
                                                     select a).FirstOrDefaultAsync();
 
+                    
+
                     if (uploadFile is not null)
                     {
-                        await this.handleOfficeBranch(rows);
-                        await this.handleEmployeePosition(rows);
-                        await this.handleEmployee(rows, uploadFile.Id);
+                        if (rows.Count <= 0)
+                        {
+                            uploadFile.Status = "EMPTY";
+                        } 
+                        else
+                        {
+                            await this.handleOfficeBranch(rows);
+                            await this.handleEmployeePosition(rows);
+                            await this.handleEmployee(rows, uploadFile.Id);
 
-                        uploadFile.Status = "DONE";
+                            uploadFile.Status = "DONE";
+                        }
+                        
                         await context.SaveChangesAsync();
                     }
                 }
