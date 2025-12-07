@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿
 using Microsoft.EntityFrameworkCore;
-using WebApplication1.DTO;
-using WebApplication1.Model;
 
 namespace WebApplication1.Data
 {
@@ -14,12 +9,5 @@ namespace WebApplication1.Data
             : base(options)
         {
         }
-
-        public DbSet<EmployeeDetail> EmployeeDetail { get; set; } = null!;
-
-        public DbSet<Employee>? Employee { get; set; }
-        public DbSet<EmployeePosition>? EmployeePosition { get; set; }
-        public DbSet<OfficeBranch>? OfficeBranch { get; set; }
-        public DbSet<UploadFile>? UploadFile { get; set; }
     }
 }
